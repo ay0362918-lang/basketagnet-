@@ -85,40 +85,37 @@ async function ensureVoucher() {
     }
 }
 
-async function spamApproveDirectAPI(batchSize = 10) {
+async function spamApproveDirectAPI(batchSize = 4) {
     if (!voucherId) return 0;
 
     try {
-        // Fetch nonce ONCE
         const startingNonce = await api.rpc.system.accountNextIndex(account.address);
         let nonce = startingNonce.toNumber();
-
         const promises = [];
 
         for (let i = 0; i < batchSize; i++) {
             const amount = 20000000000000n + BigInt(Math.floor(Math.random() * 999000));
             const payloadHex = buildApprovePayload(amount);
 
-            // Construct raw Gear message extrinsic
             const message = {
                 destination: BET_TOKEN,
                 payload: payloadHex,
-                gasLimit: 500000000,  // EXTREMELY CRITICAL: 500 Million (0.05 VARA). Prevents voucher from throwing 1010
+                gasLimit: 2000000000,  // Exact math: 2 Billion (0.2 VARA) to satisfy 1.977B min_limit
                 value: 0
             };
 
-            // Wrap the message extrinsic in a voucher call
             const msgTx = api.message.send(message);
             const tx = api.voucher.call(voucherId, { SendMessage: msgTx });
 
             const currentNonce = nonce++;
 
-            // Sign and submit, but DO NOT await block inclusion
             const txPromise = new Promise((resolve) => {
                 tx.signAndSend(account, { nonce: currentNonce }, ({ status, events }) => {
-                    if (status.isReady || status.isBroadcast) {
-                        // Immediately resolve once it hits the mempool
+                    // MUST wait for block inclusion so the 0.2 VARA reservation is refunded!
+                    if (status.isInBlock || status.isFinalized) {
                         resolve(true);
+                    } else if (status.isInvalid || status.isDropped) {
+                        resolve(false);
                     }
                 }).catch(err => {
                     resolve(false);
@@ -126,12 +123,10 @@ async function spamApproveDirectAPI(batchSize = 10) {
             });
 
             promises.push(txPromise);
-            
             txCounter++;
             log(`✅ TX #${txCounter} | Nonce pipelined: ${currentNonce}`);
         }
 
-        // Wait for all txs in batch to reach mempool
         await Promise.all(promises);
         return batchSize;
 
@@ -151,9 +146,10 @@ async function loop() {
     while (true) {
         try {
             round++;
-            await spamApproveDirectAPI(10); // Fire 10 transactions per batch
-            // Chain block time naturally throttles us slightly, but mempool accepts them instantly
-            await new Promise(r => setTimeout(r, 2000)); 
+            // Batch size 4 * 0.2 VARA = 0.8 VARA reservation (Fits inside 1.0 VARA Voucher!)
+            await spamApproveDirectAPI(4); 
+            // Wait slightly just in case of block lag
+            await new Promise(r => setTimeout(r, 500)); 
         } catch (err) {
             log("💥 Loop error:", err.message);
             await new Promise(r => setTimeout(r, 3000));
