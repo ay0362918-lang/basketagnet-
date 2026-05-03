@@ -94,7 +94,9 @@ async function spamApproveDirectAPI(batchSize = 4) {
         const promises = [];
 
         for (let i = 0; i < batchSize; i++) {
-            const amount = 20000000000000n + BigInt(Math.floor(Math.random() * 999000));
+            // FIX: Set amount to 0n! If the contract panics due to allowance overflow, 
+            // setting it to 0 stops the panic, stopping the gas drain!
+            const amount = 0n; 
             const payloadHex = buildApprovePayload(amount);
 
             const message = {
