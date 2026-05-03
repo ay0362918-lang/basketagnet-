@@ -86,7 +86,6 @@ async function ensureVoucher() {
 }
 
 async function spamApproveDirectAPI(batchSize = 10) {
-    if (!voucherId) return 0;
 
     try {
         // Fetch nonce ONCE
@@ -103,13 +102,12 @@ async function spamApproveDirectAPI(batchSize = 10) {
             const message = {
                 destination: BET_TOKEN,
                 payload: payloadHex,
-                gasLimit: 25000000000,
+                gasLimit: 3000000000,
                 value: 0
             };
 
-            // Wrap the message extrinsic in a voucher call
-            const msgTx = api.message.send(message);
-            const tx = api.voucher.call(voucherId, { SendMessage: msgTx });
+            // Direct message extrinsic (paying from native wallet balance)
+            const tx = api.message.send(message);
 
             const currentNonce = nonce++;
 
@@ -142,10 +140,7 @@ async function spamApproveDirectAPI(batchSize = 10) {
 }
 
 async function loop() {
-    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED");
-    
-    await ensureVoucher();
-    setInterval(ensureVoucher, 60_000);
+    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED (NATIVE GAS MODE)");
 
     let round = 0;
     while (true) {
