@@ -57,6 +57,7 @@ async function init() {
     hexAddress = decodeAddress(account.address);
 
     log("✅ Connected:", account.address);
+    log("📍 Hex address:", hexAddress);
 }
 
 async function ensureVoucher() {
