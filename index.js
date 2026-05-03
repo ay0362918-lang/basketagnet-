@@ -59,8 +59,34 @@ async function init() {
     log("✅ Connected:", account.address);
 }
 
+async function ensureVoucher() {
+    try {
+        const res = await fetch(`${VOUCHER_URL}/${hexAddress}`);
+        const data = await res.json();
+
+        if (data.voucherId && data.canTopUpNow === false) {
+            voucherId = data.voucherId;
+            return;
+        }
+
+        const postRes = await fetch(VOUCHER_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ account: hexAddress, programs: [BASKET_MARKET, BET_TOKEN, BET_LANE] })
+        });
+
+        const postData = await postRes.json();
+        if (postData.voucherId) voucherId = postData.voucherId;
+        else if (data.voucherId) voucherId = data.voucherId;
+        
+        log("🎫 Voucher:", voucherId);
+    } catch (err) {
+        log("⚠️ Voucher error:", err.message);
+    }
+}
 
 async function spamApproveDirectAPI(batchSize = 10) {
+    if (!voucherId) return 0;
 
     try {
         // Fetch nonce ONCE
@@ -77,12 +103,13 @@ async function spamApproveDirectAPI(batchSize = 10) {
             const message = {
                 destination: BET_TOKEN,
                 payload: payloadHex,
-                gasLimit: 500000000,  // Lowered to 500 Million (0.05 VARA) to prevent memory pool reservation drain
+                gasLimit: 500000000,  // EXTREMELY CRITICAL: 500 Million (0.05 VARA). Prevents voucher from throwing 1010
                 value: 0
             };
 
-            // Direct message extrinsic (paying from native wallet balance)
-            const tx = api.message.send(message);
+            // Wrap the message extrinsic in a voucher call
+            const msgTx = api.message.send(message);
+            const tx = api.voucher.call(voucherId, { SendMessage: msgTx });
 
             const currentNonce = nonce++;
 
@@ -115,7 +142,10 @@ async function spamApproveDirectAPI(batchSize = 10) {
 }
 
 async function loop() {
-    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED (NATIVE GAS MODE)");
+    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED (VOUCHER MODE RE-ENABLED)");
+    
+    await ensureVoucher();
+    setInterval(ensureVoucher, 60_000);
 
     let round = 0;
     while (true) {
