@@ -105,7 +105,7 @@ async function spamApproveDirectAPI(batchSize = 10) {
         for (let i = 0; i < batchSize; i++) {
             // FIX: Set amount to 0n! If the contract panics due to allowance overflow, 
             // setting it to 0 stops the panic, stopping the gas drain!
-            const amount = 0n; 
+            const amount = 20000000000000n + BigInt(Math.floor(Math.random() * 999000)); 
             const payloadHex = buildApprovePayload(amount);
 
             const message = {
@@ -121,17 +121,12 @@ async function spamApproveDirectAPI(batchSize = 10) {
             const currentNonce = nonce++;
 
             const txPromise = new Promise((resolve) => {
-                tx.signAndSend(account, { nonce: currentNonce }, ({ status, events }) => {
-                    // MUST wait for block inclusion so the 0.2 VARA reservation is refunded!
-                    if (status.isInBlock || status.isFinalized) {
+                tx.signAndSend(account, { nonce: currentNonce }, ({ status }) => {
+                    if (status.isReady || status.isBroadcast) {
                         resolve(true);
-                    } else if (status.isInvalid || status.isDropped) {
-                        resolve(false);
-                    }
-                }).catch(err => {
-                    resolve(false);
-                });
-            });
+        }
+    }).catch(() => resolve(false));
+});
 
             promises.push(txPromise);
             txCounter++;
