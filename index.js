@@ -26,17 +26,21 @@ function log(...args) {
 
 // Exactly mirrors the Rust payload logic to avoid double SCALE encoding WASM traps!
 function buildApprovePayload(amountBigInt) {
+    console.log("DEBUG amount:", amountBigInt.toString());  // ADD THIS
+    
     const service = Buffer.from("BetToken");
     const method = Buffer.from("Approve");
     const spender = Buffer.from(BET_LANE.replace("0x", ""), "hex");
     
     const amountBuffer = Buffer.alloc(32, 0);
-    // Write as little-endian - amount fits in first 8 bytes
     let val = amountBigInt;
     for (let i = 0; i < 16; i++) {
         amountBuffer[i] = Number(val & 0xFFn);
         val = val >> 8n;
     }
+
+    // ADD THIS to verify payload
+    console.log("DEBUG payload end:", amountBuffer.slice(0, 8).toString('hex'));
 
     const payload = Buffer.concat([
         Buffer.from([(service.length) << 2]),
