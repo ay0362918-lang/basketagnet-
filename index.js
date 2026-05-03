@@ -30,10 +30,13 @@ function buildApprovePayload(amountBigInt) {
     const method = Buffer.from("Approve");
     const spender = Buffer.from(BET_LANE.replace("0x", ""), "hex");
     
-    // Convert 128-bit amount to little endian bytes (Gear VFT uses u128, NOT U256!)
-    const amountBuffer = Buffer.alloc(16);
-    amountBuffer.writeBigUInt64LE(amountBigInt & 0xFFFFFFFFFFFFFFFFn, 0);
-    amountBuffer.writeBigUInt64LE(amountBigInt >> 64n, 8);
+    const amountBuffer = Buffer.alloc(32, 0);
+    // Write as little-endian - amount fits in first 8 bytes
+    let val = amountBigInt;
+    for (let i = 0; i < 16; i++) {
+        amountBuffer[i] = Number(val & 0xFFn);
+        val = val >> 8n;
+    }
 
     const payload = Buffer.concat([
         Buffer.from([(service.length) << 2]),
