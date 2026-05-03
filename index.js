@@ -102,12 +102,13 @@ async function spamApproveDirectAPI(batchSize = 10) {
             const message = {
                 destination: BET_TOKEN,
                 payload: payloadHex,
-                gasLimit: 3000000000,
+                gasLimit: 2000000000,  // Lowered to 2 Billion (0.2 VARA) to bypass the 1010 error on 1 VARA standard vouchers!
                 value: 0
             };
 
-            // Direct message extrinsic (paying from native wallet balance)
-            const tx = api.message.send(message);
+            // Wrap the message extrinsic in a voucher call
+            const msgTx = api.message.send(message);
+            const tx = api.voucher.call(voucherId, { SendMessage: msgTx });
 
             const currentNonce = nonce++;
 
@@ -140,7 +141,10 @@ async function spamApproveDirectAPI(batchSize = 10) {
 }
 
 async function loop() {
-    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED (NATIVE GAS MODE)");
+    log("🚀 ULTRA-FAST NONCE-PIPELINING LOOP STARTED (VOUCHER MODE)");
+    
+    await ensureVoucher();
+    setInterval(ensureVoucher, 60_000);
 
     let round = 0;
     while (true) {
