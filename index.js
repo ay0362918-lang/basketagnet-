@@ -59,26 +59,7 @@ async function init() {
     log("✅ Connected:", account.address);
 }
 
-async function ensureVoucher() {
-    try {
-        const res = await fetch(`${VOUCHER_URL}/${hexAddress}`);
-        const data = await res.json();
 
-        if (data.voucherId && data.canTopUpNow === false) {
-            voucherId = data.voucherId;
-            return;
-        }
-
-        const postRes = await fetch(VOUCHER_URL, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ account: hexAddress, programs: [BASKET_MARKET, BET_TOKEN, BET_LANE] })
-        });
-
-        const postData = await postRes.json();
-        if (postData.voucherId) voucherId = postData.voucherId;
-        else if (data.voucherId) voucherId = data.voucherId;
-        
 async function spamApproveDirectAPI(batchSize = 10) {
 
     try {
