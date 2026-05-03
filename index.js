@@ -145,21 +145,22 @@ async function loop() {
     await ensureVoucher();
     setInterval(ensureVoucher, 60_000);
 
+    // Wait for mempool to clear from any previous run
+    log("⏳ Waiting 30s for mempool to clear...");
+    await new Promise(r => setTimeout(r, 30000));
+
     let round = 0;
     while (true) {
         try {
             round++;
-            // Batch size 10 * 0.05 VARA = 0.5 VARA reservation (Fits perfectly inside 1.0 VARA Voucher)
-            await spamApproveDirectAPI(10); 
-            // Wait slightly just in case of block lag
-            await new Promise(r => setTimeout(r, 500)); 
+            await spamApproveDirectAPI(10);
+            await new Promise(r => setTimeout(r, 3000));
         } catch (err) {
             log("💥 Loop error:", err.message);
             await new Promise(r => setTimeout(r, 3000));
         }
     }
 }
-
 async function main() {
     await init();
     await loop();
