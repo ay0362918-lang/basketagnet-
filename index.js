@@ -30,8 +30,8 @@ function buildApprovePayload(amountBigInt) {
     const method = Buffer.from("Approve");
     const spender = Buffer.from(BET_LANE.replace("0x", ""), "hex");
     
-    // Convert 256-bit amount to little endian bytes
-    const amountBuffer = Buffer.alloc(32);
+    // Convert 128-bit amount to little endian bytes (Gear VFT uses u128, NOT U256!)
+    const amountBuffer = Buffer.alloc(16);
     amountBuffer.writeBigUInt64LE(amountBigInt & 0xFFFFFFFFFFFFFFFFn, 0);
     amountBuffer.writeBigUInt64LE(amountBigInt >> 64n, 8);
 
@@ -85,7 +85,7 @@ async function ensureVoucher() {
     }
 }
 
-async function spamApproveDirectAPI(batchSize = 4) {
+async function spamApproveDirectAPI(batchSize = 10) {
     if (!voucherId) return 0;
 
     try {
@@ -102,7 +102,7 @@ async function spamApproveDirectAPI(batchSize = 4) {
             const message = {
                 destination: BET_TOKEN,
                 payload: payloadHex,
-                gasLimit: 2000000000,  // Exact math: 2 Billion (0.2 VARA) to satisfy 1.977B min_limit
+                gasLimit: 500000000,  // Restored to optimal 500 Million (0.05 VARA)
                 value: 0
             };
 
@@ -148,8 +148,8 @@ async function loop() {
     while (true) {
         try {
             round++;
-            // Batch size 4 * 0.2 VARA = 0.8 VARA reservation (Fits inside 1.0 VARA Voucher!)
-            await spamApproveDirectAPI(4); 
+            // Batch size 10 * 0.05 VARA = 0.5 VARA reservation (Fits perfectly inside 1.0 VARA Voucher)
+            await spamApproveDirectAPI(10); 
             // Wait slightly just in case of block lag
             await new Promise(r => setTimeout(r, 500)); 
         } catch (err) {
