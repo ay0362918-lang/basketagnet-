@@ -63,6 +63,7 @@ async function ensureVoucher() {
     try {
         const res = await fetch(`${VOUCHER_URL}/${hexAddress}`);
         const data = await res.json();
+        console.log("VOUCHER DEBUG:", JSON.stringify(data));
 
         if (data.voucherId && data.canTopUpNow === false) {
             voucherId = data.voucherId;
